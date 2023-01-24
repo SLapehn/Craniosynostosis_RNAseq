@@ -8,17 +8,20 @@ There are ten RMarkdown files that were each used for a different part of the an
 
 -Combined Model- Differential Gene Expression
 
+
 -Female Model- Filtering
 
 -Female Model- Surrogate Variable Analysis and Voom Normalization
 
 -Female Model- Differential Gene Expression
 
+
 -Male Model- Filtering
 
 -Male Model- Surrogate Variable Analysis and Voom Normalization
 
 -Male Model- Differential Gene Expression
+
 
 -Comparison of Combined, Female, and Male Models
 
