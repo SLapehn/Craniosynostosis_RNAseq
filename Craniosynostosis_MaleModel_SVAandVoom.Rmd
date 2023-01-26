@@ -1,0 +1,60 @@
+---
+title: "CranioRNAseq- SVA and Voom Adjustment"
+author: "Samantha Lapehn Young"
+date: "5/05/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Male Craniosynostosis RNAseq: SVA and Voom Quality Weights Adjustment
+
+This code performs the surrogate variable analysis and voom transformation for the single suture craniosynostosis RNAseq data for the male model. 
+
+## Load Packages
+```{r Packages}
+library(tidyverse)
+library(sva)
+library(limma)
+library(edgeR)
+```
+
+
+## Load Data
+Load Data that was Filtered from Craniosynostis_MaleModel_Filtering.Rmd
+```{r Load Data}
+load("/Volumes/paquette_a/slapehn/CranioRNAseq/Male_CranioRNAseq/Data/Male_CranioRNAseq_FilteredNormalized.RData")
+```
+
+## Run SVA 
+Creates surrogate variables that explain variability that is not explained by available covariates
+```{r SVA}
+#Step 1: Prepare model matrices (Full Model + Null Model)
+mod <- model.matrix(~CranioCovariates$Phenotype +
+                      CranioCovariates$Proband_Age +
+                      CranioCovariates$Culture_Time +
+                      CranioCovariates$Cohort + 
+                      CranioCovariates$Origin)
+
+#Null model (mod0) contains all covariates except Phenotype which is the covariate of interest
+mod0 <- model.matrix(~1 + CranioCovariates$Proband_Age +
+                      CranioCovariates$Culture_Time +
+                      CranioCovariates$Cohort + 
+                      CranioCovariates$Origin)
+
+#Step 2: Run SVA
+sv <- sva(cpm(y_Final, log = TRUE),mod, mod0)
+
+#Step 3: Add surrogate variables (sv) to model
+mod<-cbind(mod,sv$sv)
+  dim(mod)
+```
+
+## Voom Transform Data
+Voom transform the data to use in the limma differential gene expression pipeline
+```{r Voom}
+v<-voom(y_Final, mod,plot=TRUE)
+save(v, CranioCovariates, mod, file="/Volumes/paquette_a/slapehn/CranioRNAseq/Male_CranioRNAseq/Data/Male_CranioRNAseq_VoomAdjustedData.RData")
+```
