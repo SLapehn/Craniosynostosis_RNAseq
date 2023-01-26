@@ -1,0 +1,262 @@
+---
+title: "Craniosynostosis RNAseq: Female Model Filtering"
+author: "Samantha Lapehn Young"
+date: "5/05/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Craniosynostosis RNAseq: Female Model Filtering
+This code performs data filtering and pre-processing for the single suture Craniosynostosis project with the Paquette and Cunningham Labs evaluating differential gene expression in primary osteoblasts across four Craniosynostosis phenotypes (Metopic, Sagittal, Coronal, Lamboid) compared to unaffected controls in Female samples. 
+
+## Load Packages
+```{r Packages}
+library(biomaRt)
+library(org.Hs.eg.db)
+library(tidyverse)
+library(edgeR)
+```
+
+## Load Covariate Data
+Loading covariate data for samples that had sequencing data. All samples with NAs were removed prior to uploading. Turn sample ID into a character variable and add as rownames. 
+```{r covariate load}
+CranioCovariates <- read.csv("/Volumes/paquette_a/slapehn/CranioRNAseq/Female_CranioRNAseq/Female_Cranio_CovariateData.csv")
+
+CranioCovariates$Sample_ID <- as.character(CranioCovariates$Sample_ID)
+rownames(CranioCovariates) <- CranioCovariates$Sample_ID
+dim(CranioCovariates)
+
+CranioCovariates <- na.omit(CranioCovariates)
+
+dim(CranioCovariates)
+```
+
+## Load RNAseq Count Data and make into matrix
+Loading count data with rownames as entrez gene IDs. Removing three participants that have missing covariate data and subsetting to only include Female participants.
+```{r count data load}
+load("/Volumes/paquette_a/slapehn/CranioRNAseq/MCCranio_RawCountsfromSubrread4152022.RData")
+as.character(colnames(Counts))
+as.character(rownames(Counts))
+#Removing three participants without full covariate data
+Counts$"163629" <- NULL
+Counts$"163630" <- NULL
+Counts$"95689" <- NULL
+Female_SampleIDs <- CranioCovariates$Sample_ID
+Female_Counts <- Counts[colnames(Counts) %in% Female_SampleIDs]
+Count_Matrix <- data.matrix(Female_Counts)
+
+```
+
+##Create an annotation file that summaries  what the genes are
+Create annotation file with Entrez gene IDs to match the gene identifier in the count data
+```{r Annotation File}
+
+mart <- useDataset("hsapiens_gene_ensembl", useMart("ensembl"))
+annot <- biomaRt::getBM(filters= "entrezgene_id", attributes=c("ensembl_gene_id","description","gene_biotype","hgnc_id","hgnc_symbol","entrezgene_id"), values=rownames(Count_Matrix), mart=mart)
+
+#Note: want different attributes? -use "listAttributes()" to see  what is  available
+#Pathway enrichment with KEGG  requires entrez IDs
+# Ensembl ids are more stable
+
+annot <-na.omit(annot) 
+annot <-annot [!duplicated(annot$ensembl_gene_id),]
+annot<- annot[!duplicated(annot$entrezgene_id),]
+rownames(annot )<-as.character(annot$entrezgene_id)
+```
+
+## Entrez to Ensembl Gene Name Conversion
+Switching gene identifiers from Entrez gene IDs to ensembl Gene IDs because Entrez gene IDs get confused as being integers.
+```{r Entrez to Ensembl}
+Female_Counts$Entrez <- rownames(Female_Counts)
+annot$Entrez <- rownames(annot)
+Entrez_Ensembl_Map <- annot %>%
+  dplyr::select(ensembl_gene_id, Entrez)
+
+Counts_Ensembl <- inner_join(Entrez_Ensembl_Map, Female_Counts, by=c("Entrez"="Entrez"))
+annot$Entrez <- NULL
+rownames(annot) <- as.character(annot$ensembl_gene_id)
+rownames(Counts_Ensembl) <- Counts_Ensembl$ensembl_gene_id
+Counts_Ensembl_Ready <- subset(Counts_Ensembl, select = -c(Entrez, ensembl_gene_id))
+Count_Matrix_Final <- data.matrix(Counts_Ensembl_Ready)
+```
+
+
+##Check:  Make sure sample info and gene names are aligned
+```{r Check}
+intersect(colnames(Count_Matrix_Final),rownames(CranioCovariates))
+
+CranioCovariates<-CranioCovariates[colnames(Count_Matrix_Final),]
+
+rownames(CranioCovariates)==colnames(Count_Matrix_Final)
+
+```
+
+## Filter & Normalize data
+1. Clean up genes 
+2. Convert from Ensembl IDs to HGNC IDs
+3. Filter out low  expressing genes
+4. Normalize data
+5. Plot
+
+```{r Filter & Normalize}
+
+#1. Remove Genes with Issues
+
+#remove all Ensembl IDs with the suffix "_PAR_Y"
+dim(annot)
+annot<-annot[!grepl("_PAR_Y",annot$ensembl_gene_id),]
+dim(annot)
+
+#get rownames of count dataset to match annot$ENSEMBL by removing the "." and 
+# everything after it
+dim(Count_Matrix_Final)
+rownames(Count_Matrix_Final)<-gsub("\\..*","",rownames(Count_Matrix_Final))
+dim(Count_Matrix_Final)
+
+# Make Everything match the annotation file
+Count_Matrix_Final<-Count_Matrix_Final[annot$ensembl_gene_id,]
+
+#remove all gene types that are difficult to interpret
+
+#2.  Remove all genes that do  not make sense to look at using "gene biotypes"
+table(annot$gene_biotype)
+
+BiotypesToKeep<-c("protein_coding")
+
+GenesToKeep<-NA
+for(i in 1:length(BiotypesToKeep)){
+  GenesToKeep=c(GenesToKeep,annot[which(annot$gene_biotype==BiotypesToKeep[i]),"ensembl_gene_id"])
+}
+
+GenesToKeep<-na.omit(GenesToKeep)
+dim(annot)
+annot<-annot[which(annot$ensembl_gene_id%in%GenesToKeep),]
+dim(annot)
+
+dim(Count_Matrix_Final)
+Count_Matrix_Final<-Count_Matrix_Final[annot$ensembl_gene_id,]
+dim(Count_Matrix_Final)
+#remove remaining duplicate genes
+summary(duplicated(annot$ensembl_gene_id))
+
+annot$ensembl_gene_id == rownames(Count_Matrix_Final)
+
+
+print(dim(annot)[1])
+print(dim(Count_Matrix_Final)[1])
+
+#Make Design Matrix
+Phenotype<-factor(CranioCovariates$Phenotype,levels=c("Control","Sagittal", "Coronal", "Metopic","Lambdoid"))
+Proband_Age <- CranioCovariates$Proband_Age
+Culture_Time <- CranioCovariates$Culture_Time
+Cohort <- factor(CranioCovariates$Cohort, levels=c("1", "2"))
+Origin <- factor(CranioCovariates$Origin, levels=c("Seattle", "St.Louis", "Chicago", "Atlanta"))
+design <- model.matrix(~Phenotype + Proband_Age + Culture_Time + Cohort + Origin)
+design
+
+# Perform Gene Filtering 
+y<-Count_Matrix_Final
+y<- DGEList(y, genes = annot)
+keep <- filterByExpr(y,design=design,min.count=20,min.total.count = 20) 
+y_Filtered <- y[keep, ]
+dim(y)
+dim(y_Filtered)
+
+logcpm <- cpm(y$counts, log=T)
+logcpm_filt<-cpm(y_Filtered$counts,log=T)
+annot<-annot[keep,]
+dim(logcpm)
+dim(logcpm_filt)
+dim(annot)
+table(annot$gene_biotype)
+
+plot(density(logcpm),main="Before Filtering")#,xlim=c(-10,20000))
+abline(v =0, col = "red", lty = 2)
+
+plot(density(logcpm_filt),main="After Filtering")#,xlim=c(-10,20000))
+abline(v =0, col = "red", lty = 2)
+
+# Calculate Normalization Factors 
+y_Final  <- calcNormFactors(y_Filtered,method="TMM") # This is the default
+LogCPM_Final <- cpm(y_Final$counts, log=T)
+
+#Plot to make sure everything is normalized
+#Before Filtering
+boxplot(logcpm[,1:10], main="Before Filtering")
+#After Filtering
+boxplot(logcpm_filt[,1:10], main="After Filtering")
+#After filtering and normalization
+boxplot(LogCPM_Final[,1:10], main="After Filtering and Normalization")
+
+```
+
+## Quality Control: Principle Components Analysis
+Performing a PCA and then testing association of covariates with PCs
+```{r Principal Components}
+PCobj =prcomp(t(LogCPM_Final), scale=TRUE)
+PCs = PCobj$x
+PCs =as.data.frame(PCs[,1:4])
+colnames(PCs)<-c("PC1","PC2","PC3","PC4")
+
+
+CranioCovariates_PCs<-merge(CranioCovariates, PCs,by='row.names')
+rownames(CranioCovariates_PCs)<-CranioCovariates_PCs[,1]
+CranioCovariates_PCs<-CranioCovariates_PCs[,-1]
+
+
+EVAL<-as.data.frame(matrix(NA,nrow=4,ncol=6))
+colnames(EVAL)<-c("P_Phenotype","P_Cohort", "P_Origin","P_ProbandAge", "P_CultureTime", "P_Case")
+for (i in 1:4){
+  AOV<-aov(PCs[,i]~Phenotype,data=CranioCovariates_PCs)
+  EVAL[i,1] <-summary(AOV)[[1]][["Pr(>F)"]][1]
+}
+
+for (i in 1:4){
+  AOV<-aov(PCs[,i]~Cohort,data=CranioCovariates_PCs)
+  EVAL[i,2] <-summary(AOV)[[1]][["Pr(>F)"]][1]
+}
+
+for (i in 1:4){
+  AOV<-aov(PCs[,i]~Origin,data=CranioCovariates_PCs)
+  EVAL[i,3] <-summary(AOV)[[1]][["Pr(>F)"]][1]
+}
+
+for (i in 1:4){
+  AOV<-aov(PCs[,i]~Proband_Age,data=CranioCovariates_PCs)
+  EVAL[i,4] <-summary(AOV)[[1]][["Pr(>F)"]][1]
+}
+for (i in 1:4){
+  AOV<-aov(PCs[,i]~Culture_Time,data=CranioCovariates_PCs)
+  EVAL[i,5] <-summary(AOV)[[1]][["Pr(>F)"]][1]
+}
+for (i in 1:4){
+  AOV<-aov(PCs[,i]~Case_Control,data=CranioCovariates_PCs)
+  EVAL[i,6] <-summary(AOV)[[1]][["Pr(>F)"]][1]
+}
+EVAL$PropVar = summary(PCobj)$importance["Proportion of Variance", 1:4]
+print(EVAL)
+
+
+#Coloring by Variables associated with PC1 or PC2
+#PC2 v PC1-Coloring by Phenotype
+plot(PCs$PC1,PCs$PC2,col=as.factor(CranioCovariates_PCs$Phenotype),xlab="PC1",ylab="PC2", main="Phenotype")
+#PC2 v PC1- Colored by Cohort
+plot(PCs$PC1,PCs$PC2,col=CranioCovariates_PCs$Cohort,xlab="PC1",ylab="PC2", main="Cohort")
+#PC2 v PC1- Colored by Sample Origin
+plot(PCs$PC1,PCs$PC2,col=as.factor(CranioCovariates_PCs$Origin),xlab="PC1",ylab="PC2", main="Sample Origin")
+#PC2 v PC1- Colored by Proband Age
+plot(PCs$PC1,PCs$PC2,col=CranioCovariates_PCs$Proband_Age,xlab="PC1",ylab="PC2", main="Proband Age")
+#PC2 v PC1- Colored by Culture Time
+plot(PCs$PC1,PCs$PC2,col=CranioCovariates_PCs$Culture_Time,xlab="PC1",ylab="PC2", main="Culture Time")
+
+```
+
+## Save Data
+Save data to be used for SVA and Voom transformation
+```{r save}
+save(CranioCovariates, y_Final, file="/Volumes/paquette_a/slapehn/CranioRNAseq/Female_CranioRNAseq/Data/Female_CranioRNAseq_FilteredNormalized.RData")
+```
+
