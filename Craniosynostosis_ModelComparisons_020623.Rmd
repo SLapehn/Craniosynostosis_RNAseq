@@ -1,0 +1,419 @@
+---
+title: "Full, Male, Female DEG Comparisons"
+author: "Samantha Lapehn Young"
+date: "5/5/2022"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Comparison of DEGs from Full, Male, and Female Models- Craniosynostosis RNA Sequencing
+
+## Load Packages
+```{r Packages}
+library(tidyverse)
+library(UpSetR)
+library(ggvenn)
+library(pheatmap)
+```
+
+## Read in DEG Lists
+Loading DEG lists from Full, Male, and Female Models
+```{r DEG lists}
+Full_Coronal <- read.csv("/active/paquette_a/slapehn/CranioRNAseq/DEGs/Full_Sig_Coronal_020623.csv")
+Full_Metopic <- read.csv("/active/paquette_a/slapehn/CranioRNAseq/DEGs/Full_Sig_Metopic_020623.csv")
+Full_Lambdoid <- read.csv("/active/paquette_a/slapehn/CranioRNAseq/DEGs/Full_Sig_Lambdoid_020623.csv")
+Full_Sagittal <- read.csv("/active/paquette_a/slapehn/CranioRNAseq/DEGs/Full_Sig_Sagittal_020623.csv")
+
+Female_Coronal <- read.csv("/active/paquette_a/slapehn/CranioRNAseq/DEGs/Female_Sig_Coronal_020623.csv")
+Female_Lambdoid <- read.csv("/active/paquette_a/slapehn/CranioRNAseq/DEGs/Female_Sig_Lambdoid_020623.csv")
+Female_Sagittal <- read.csv("/active/paquette_a/slapehn/CranioRNAseq/DEGs/Female_Sig_Sagittal_020623.csv")
+Female_Metopic <-read.csv("/active/paquette_a/slapehn/CranioRNAseq/DEGs/Female_Sig_Metopic_020623.csv")
+
+Male_Coronal <- read.csv("/active/paquette_a/slapehn/CranioRNAseq/DEGs/Male_Sig_Coronal_020623.csv")
+Male_Lambdoid <- read.csv("/active/paquette_a/slapehn/CranioRNAseq/DEGs/Male_Sig_Lambdoid_020623.csv")
+Male_Sagittal <- read.csv("/active/paquette_a/slapehn/CranioRNAseq/DEGs/Male_Sig_Sagittal_020623.csv")
+Male_Metopic <- read.csv("/active/paquette_a/slapehn/CranioRNAseq/DEGs/Male_Sig_Metopic_020623.csv")
+
+```
+
+## Plot DEG Overlap
+Visualize DEG overlap across phenotypes as an UpSet plot
+```{r Upset Plot}
+#Step 1: Make Vectors
+
+Full_Cor_Vec<- as.vector(Full_Coronal$ensembl_gene_id)
+Full_Lamb_Vec<- as.vector(Full_Lambdoid$ensembl_gene_id)
+Full_Met_Vec<-as.vector(Full_Metopic$ensembl_gene_id)
+Full_Sag_Vec<- as.vector(Full_Sagittal$ensembl_gene_id)
+
+Male_Cor_Vec<- as.vector(Male_Coronal$ensembl_gene_id)
+Male_Lamb_Vec<- as.vector(Male_Lambdoid$ensembl_gene_id)
+Male_Met_Vec<-as.vector(Male_Metopic$ensembl_gene_id)
+Male_Sag_Vec<- as.vector(Male_Sagittal$ensembl_gene_id)
+
+Female_Cor_Vec<- as.vector(Female_Coronal$ensembl_gene_id)
+Female_Lamb_Vec<- as.vector(Female_Lambdoid$ensembl_gene_id)
+Female_Sag_Vec<- as.vector(Female_Sagittal$ensembl_gene_id)
+Female_Met_Vec <- as.vector(Female_Metopic$ensembl_gene_id)
+
+#Step 2: Turn vectors into a list
+Upset_list<-list("Full Coronal"=Full_Cor_Vec, "Full Lambdoid"=Full_Lamb_Vec, "Full Metopic"=Full_Met_Vec, "Full Sagittal"=Full_Sag_Vec, "Male Coronal"=Male_Cor_Vec, "Male Lambdoid"=Male_Lamb_Vec, "Male Metopic"=Male_Met_Vec, "Male Sagittal"=Male_Sag_Vec, "Female Coronal"=Female_Cor_Vec, "Female Lambdoid"=Female_Lamb_Vec, "Female Metopic"=Female_Met_Vec, "Female Sagittal"=Female_Sag_Vec, "Female Metopic" =Female_Met_Vec)
+
+#Step 3 Set up Colors
+N=43
+ColorsMain <-rep("black",N) #black is all 
+ColorsMain[c(3,7)]<-"#1FF696" #Coronal
+ColorsMain[c(1,4,9)]<-"Gold" #Metopic
+ColorsMain[c(2,6,8, 11)]<-"#F83D64" #Sagittal
+ColorsMain[c(5, 13, 18)]<-"#3D55F8" #Lambdoid
+
+
+#Step 3: UpSet Plot
+upset(fromList(Upset_list), nsets=11,  text.scale=2, sets=c("Full Metopic","Full Sagittal", "Full Coronal",  "Full Lambdoid", "Male Metopic", "Male Sagittal",  "Male Coronal", "Male Lambdoid", "Female Metopic", "Female Sagittal", "Female Coronal", "Female Lambdoid" ), keep.order=T, sets.bar.color=c("Black", "Black", "Black", "Black", "#5CA3FD", "#5CA3FD", "#5CA3FD", "#5CA3FD", "#F996F9", "#F996F9", "#F996F9", "#F996F9"), main.bar.color=ColorsMain)
+
+```
+
+## Venn Diagrams of DEG Overlap by Phenotype
+Create Venn Diagrams to visualize overlap by phenotype across the three models
+```{r venn diagram 1}
+# Coronal Venn Diagram
+VDList_Coronal <- list("Combined"=Full_Coronal$ensembl_gene_id, "Male"=Male_Coronal$ensembl_gene_id, "Female"=Female_Coronal$ensembl_gene_id)
+ggvenn(VDList_Coronal, fill_color=c("Gray", "#3DB4F8", "#FE7ADE"), text_size=10, show_percentage=FALSE)
+
+# Lambdoid Venn Diagram
+VDList_Lambdoid <- list("Combined"=Full_Lambdoid$ensembl_gene_id, "Male"=Male_Lambdoid$ensembl_gene_id, "Female"=Female_Lambdoid$ensembl_gene_id)
+ggvenn(VDList_Lambdoid, fill_color=c("Gray", "#3DB4F8", "#FE7ADE"), text_size=10, show_percentage=FALSE)
+
+# Sagittal Venn Diagram
+VDList_Sagittal <- list("Combined"=Full_Sagittal$ensembl_gene_id, "Male"=Male_Sagittal$ensembl_gene_id, "Female"=Female_Sagittal$ensembl_gene_id)
+ggvenn(VDList_Sagittal, fill_color=c("Gray", "#3DB4F8", "#FE7ADE"), text_size=10, show_percentage=FALSE)
+
+# Metopic Venn Diagram
+VDList_Metopic <- list("Combined"=Full_Metopic$ensembl_gene_id, "Male"=Male_Metopic$ensembl_gene_id, "Female"=Female_Metopic$ensembl_gene_id)
+ggvenn(VDList_Metopic, fill_color=c("Gray", "#3DB4F8", "#FE7ADE"), text_size=10, show_percentage=FALSE)
+
+```
+
+## Venn Diagrams of Overlap across phenotypes within same model
+Create venn diagrams of overlap within one model across phenotypes
+```{r venn diagram 2}
+# Combined Model Venn Diagram
+VDList_Combined <- list("Coronal"=Full_Coronal$ensembl_gene_id, "Metopic"=Full_Metopic$ensembl_gene_id, "Sagittal"=Full_Sagittal$ensembl_gene_id, "Lambdoid"=Full_Lambdoid$ensembl_gene_id)
+ggvenn(VDList_Combined, text_size=10, show_percentage=FALSE)
+
+# Male Model Venn Diagram
+VDList_Male <- list("Coronal"=Male_Coronal$ensembl_gene_id, "Metopic"=Male_Metopic$ensembl_gene_id, "Sagittal"=Male_Sagittal$ensembl_gene_id, "Lambdoid"=Male_Lambdoid$ensembl_gene_id)
+ggvenn(VDList_Male, text_size=10, show_percentage=FALSE)
+```
+
+## Plotting DEGs by Phenotype by Model
+Plot DEG number by Model according to phenotype
+```{r plotting DEGs by Phenotype}
+
+DEG_numbers <- c(nrow(Full_Metopic), nrow(Full_Sagittal), nrow(Full_Coronal), nrow(Full_Lambdoid), nrow(Male_Metopic), nrow(Male_Sagittal), nrow(Male_Coronal), nrow(Male_Lambdoid), nrow(Female_Metopic), nrow(Female_Sagittal), nrow(Female_Coronal), nrow(Female_Lambdoid))
+Phenotype <- c("Metopic", "Sagittal", "Coronal", "Lambdoid","Metopic", "Sagittal", "Coronal", "Lambdoid", "Metopic", "Sagittal", "Coronal", "Lambdoid")
+Model <- c("Primary (N=473)", "Primary (N=473)", "Primary (N=473)", "Primary (N=473)", "Male (N=318)", "Male (N=318)", "Male (N=318)", "Male (N=318)",  "Female (N=155)", "Female (N=155)", "Female (N=155)", "Female (N=155)")
+DEG_DF <- data.frame(DEG_numbers, Phenotype, Model)
+DEG_DF$Model <- factor(DEG_DF$Model, levels=c("Female (N=155)", "Male (N=318)", "Primary (N=473)"))
+
+
+
+DEG_DF %>% ggplot(aes(x=DEG_numbers, y=Phenotype, fill=Model)) + 
+  geom_bar(stat="identity", position="dodge") + 
+  theme_bw() + 
+  theme(axis.title=element_text(size=16), axis.text = element_text(size=12), plot.title=element_text(size=18), legend.text=element_text(size=12), legend.title=element_text(size=16)) + 
+  geom_text(position=position_dodge(1), aes(label=DEG_numbers)) + 
+  scale_fill_manual(values=c("#FE7ADE", "#3DB4F8", "Gray")) + 
+  xlab("Differentially Expressed Genes") + 
+  theme(legend.position="bottom", legend.title=element_blank())
+```
+
+
+## Homeobox Gene Analysis
+Identify homeobox genes from DEG lists and plot as heatmap
+```{r homeobox}
+#Upload list of homeobox genes
+homeobox <- read.csv("/active/paquette_a/slapehn/CranioRNAseq/Homeobox.csv")
+
+#Overlap Homeobox with each DEG set
+Coronal_Homeobox <- inner_join(Full_Coronal, homeobox, by=c("hgnc_symbol"= "Gene.Symbol"))
+
+Lambdoid_Homeobox <- inner_join(Full_Lambdoid, homeobox, by=c("hgnc_symbol"= "Gene.Symbol"))
+
+Sagittal_Homeobox <- inner_join(Full_Sagittal, homeobox, by=c("hgnc_symbol"= "Gene.Symbol"))
+
+Metopic_Homeobox <- inner_join(Full_Metopic, homeobox, by=c("hgnc_symbol"= "Gene.Symbol"))
+
+Male_Coronal_Homeobox <- inner_join(Male_Coronal, homeobox, by=c("hgnc_symbol"= "Gene.Symbol"))
+
+Male_Lambdoid_Homeobox <- inner_join(Male_Lambdoid, homeobox, by=c("hgnc_symbol"= "Gene.Symbol"))
+
+Male_Sagittal_Homeobox <- inner_join(Male_Sagittal, homeobox, by=c("hgnc_symbol"= "Gene.Symbol"))
+
+Male_Metopic_Homeobox <- inner_join(Male_Metopic, homeobox, by=c("hgnc_symbol"= "Gene.Symbol"))
+
+Female_Coronal_Homeobox <- inner_join(Female_Coronal, homeobox, by=c("hgnc_symbol"= "Gene.Symbol"))
+
+Female_Metopic_Homeobox <- inner_join(Female_Metopic, homeobox, by=c("hgnc_symbol"= "Gene.Symbol"))
+
+Female_Lambdoid_Homeobox <- inner_join(Female_Lambdoid, homeobox, by=c("hgnc_symbol"= "Gene.Symbol"))
+
+Female_Sagittal_Homeobox <- inner_join(Female_Sagittal, homeobox, by=c("hgnc_symbol"= "Gene.Symbol"))
+
+#Export dataframes with overlap and rearrange for heatmap matrix
+write.csv(Coronal_Homeobox, "/active/paquette_a/slapehn/CranioRNAseq/Homeobox/Coronal_Homeobox_020623.csv")
+write.csv(Sagittal_Homeobox, "/active/paquette_a/slapehn/CranioRNAseq/Homeobox/Sagittal_Homeobox_020623.csv")
+write.csv(Lambdoid_Homeobox, "/active/paquette_a/slapehn/CranioRNAseq/Homeobox/Lambdoid_Homeobox_020623.csv")
+write.csv(Metopic_Homeobox, "/active/paquette_a/slapehn/CranioRNAseq/Homeobox/Metopic_Homeobox_020623.csv")
+
+write.csv(Male_Coronal_Homeobox, "/active/paquette_a/slapehn/CranioRNAseq/Homeobox/Male_Coronal_Homeobox_020623.csv")
+write.csv(Male_Sagittal_Homeobox, "/active/paquette_a/slapehn/CranioRNAseq/Homeobox/Male_Sagittal_Homeobox_020623.csv")
+write.csv(Male_Lambdoid_Homeobox, "/active/paquette_a/slapehn/CranioRNAseq/Homeobox/Male_Lambdoid_Homeobox_020623.csv")
+write.csv(Male_Metopic_Homeobox, "/active/paquette_a/slapehn/CranioRNAseq/Homeobox/Male_Metopic_Homeobox_020623.csv")
+
+#Upload reorganized dataframe of Homeobox Genes
+Combined_Homeobox <- read.csv("/active/paquette_a/slapehn/CranioRNAseq/Homeobox/Combined_Homeobox_020623.csv")
+rownames(Combined_Homeobox) <- Combined_Homeobox$hgnc_symbol
+Combined_Homeobox <- Combined_Homeobox[,-1]
+
+# Turn into a matrix for heatmap
+
+Combined_Homeobox_Matrix <- data.matrix(Combined_Homeobox)
+Combined_Homeobox_Matrix_Final<-t(Combined_Homeobox_Matrix)
+
+col_annot<- colnames(Combined_Homeobox_Matrix_Final)
+
+Heatmap_Breaks<-seq(-2.5,2.5, length.out=31)
+
+
+pheatmap(Combined_Homeobox_Matrix_Final, 
+         color=colorRampPalette(c("#0092B3", "White", "#F09062"))(31),
+         #scale='column', # For Scaled Data
+         breaks=Heatmap_Breaks,
+         scale='none',# unscaled data
+         cluster_rows =F,
+         cluster_cols = F,
+         cellwidth=16, #Change tehe for size
+         cellheight=16, #change these for size
+         #number_color = X,
+         treeheight_row = 0,
+         showcolnames=T,
+         fontsize_number = 0.5, 
+         gaps_row=c(2,4,6))
+```
+
+## SUZ12 TF Heatmap
+Plot downstream genes of SUZ12 Enrichr result as heatmap of LogFC
+```{r SUZ12 Heatmap, fig.width=10}
+SUZ12_Lambdoid<- read.csv("/active/paquette_a/slapehn/CranioRNAseq/Enrichr/SUZ12_Lambdoid_020623.csv")
+
+SUZ12_Sagittal<- read.csv("/active/paquette_a/slapehn/CranioRNAseq/Enrichr/SUZ12_Sagittal_020623.csv")
+
+SUZ12_Coronal<- read.csv("/active/paquette_a/slapehn/CranioRNAseq/Enrichr/SUZ12_Coronal_020623.csv")
+
+SUZ12_Metopic<- read.csv("/active/paquette_a/slapehn/CranioRNAseq/Enrichr/SUZ12_Metopic_020623.csv")
+
+SUZ12_MaleSagittal<- read.csv("/active/paquette_a/slapehn/CranioRNAseq/Enrichr/SUZ12_MaleSagittal_020623.csv")
+
+SUZ12_MaleMetopic<- read.csv("/active/paquette_a/slapehn/CranioRNAseq/Enrichr/SUZ12_MaleMetopic_020623.csv")
+
+SUZ12_MaleLambdoid<- read.csv("/active/paquette_a/slapehn/CranioRNAseq/Enrichr/SUZ12_MaleLambdoid_020623.csv")
+
+#Join with LogFC
+
+SUZ12_LambdoidGenes <- inner_join(SUZ12_Lambdoid, Full_Lambdoid, by=c("Gene"="hgnc_symbol")) %>%
+  select("Gene", "logFC")
+
+SUZ12_SagittalGenes <- inner_join(SUZ12_Sagittal, Full_Sagittal, by=c("Gene"="hgnc_symbol")) %>%
+  select("Gene", "logFC")
+
+SUZ12_MetopicGenes <- inner_join(SUZ12_Metopic, Full_Metopic, by=c("Gene"="hgnc_symbol")) %>%
+  select("Gene", "logFC")
+
+SUZ12_CoronalGenes <- inner_join(SUZ12_Coronal, Full_Coronal, by=c("Gene"="hgnc_symbol")) %>%
+  select("Gene", "logFC")
+
+SUZ12_MaleSagittal <- inner_join(SUZ12_MaleSagittal, Male_Sagittal, by=c("Gene"="hgnc_symbol")) %>%
+  select("Gene", "logFC")
+
+SUZ12_MaleMetopic <- inner_join(SUZ12_MaleMetopic, Male_Metopic, by=c("Gene"="hgnc_symbol")) %>%
+  select("Gene", "logFC")
+
+SUZ12_MaleLambdoid <- inner_join(SUZ12_MaleLambdoid, Male_Lambdoid, by=c("Gene"="hgnc_symbol")) %>%
+  select("Gene", "logFC")
+
+# Combine results for heatmap matrix
+SUZ12_Join1 <- full_join(SUZ12_LambdoidGenes, SUZ12_SagittalGenes, by=c("Gene"), suffix=c("_Lambdoid", "_Sagittal"))
+
+SUZ12_Join2 <- full_join(SUZ12_Join1, SUZ12_MetopicGenes, by=c("Gene"), suffix=c("_", "_Metopic"))
+
+SUZ12_Join3 <- full_join(SUZ12_Join2, SUZ12_CoronalGenes, by=c("Gene"), suffix=c("_", "_Coronal"))
+
+SUZ12_Join4 <- full_join(SUZ12_Join3, SUZ12_MaleSagittal, by=c("Gene"), suffix=c("_", "_MaleSagittal"))
+
+SUZ12_Join5 <- full_join(SUZ12_Join4, SUZ12_MaleMetopic, by=c("Gene"), suffix=c("_", "_MaleMetopic"))
+
+SUZ12_FinalJoin <- full_join(SUZ12_Join5, SUZ12_MaleLambdoid, by=c("Gene"), suffix=c("_", "_MaleLambdoid"))
+
+colnames(SUZ12_FinalJoin) <- c("Gene", "Lambdoid", "Sagittal", "Metopic", "Coronal", "Male-Sagittal", "Male-Metopic", "Male-Lambdoid")
+
+#Export and sort by logFC
+write.csv(SUZ12_FinalJoin, "/active/paquette_a/slapehn/CranioRNAseq/Enrichr/SUZ12_FinalJoin_020623.csv")
+
+#Import reorganized 
+SUZ12_forHeatmap <-read.csv("/active/paquette_a/slapehn/CranioRNAseq/Enrichr/SUZ12_forHeatmap_020623.csv")
+
+rownames(SUZ12_forHeatmap) <-SUZ12_forHeatmap$Gene
+SUZ12_forHeatmap <-SUZ12_forHeatmap[,-1]
+
+#Prepare for Heatmap
+SUZ12_Matrix<- data.matrix(SUZ12_forHeatmap)
+SUZ12_Matrix_Final<- t(SUZ12_Matrix)
+SUZ12_Breaks<-seq(-2.5, 2.5, length.out=31)
+
+pheatmap(SUZ12_Matrix_Final,
+         color = colorRampPalette(c("#0092B3", "White", "#F09062"))(31),
+         breaks=SUZ12_Breaks,
+         scale='none',# unscaled data
+         na.color="grey",
+         cluster_rows =F,
+         cluster_cols=F,
+         na_col="grey",
+         cellwidth=5, #Change tehe for size
+         cellheight=20, #change these for size
+         treeheight_row = 0,
+         fontsize_col = 4,
+         showcolnames=T,
+         main="SUZ12", 
+        gaps_row =c(2,4,6))
+```
+
+## EZH2 Heatmap
+Plot downstream genes of EZH2 Enrichr result as heatmap of LogFC
+```{r EZH2 Heatmap, fig.width=10}
+EZH2_Lambdoid<- read.csv("/active/paquette_a/slapehn/CranioRNAseq/Enrichr/EZH2_Lambdoid_020623.csv")
+
+EZH2_MaleLambdoid<- read.csv("/active/paquette_a/slapehn/CranioRNAseq/Enrichr/EZH2_MaleLambdoid_020623.csv")
+
+#Join with LogFC
+
+EZH2_LambdoidGenes <- inner_join(EZH2_Lambdoid, Full_Lambdoid, by=c("Gene"="hgnc_symbol")) %>%
+  select("Gene", "logFC")
+
+EZH2_MaleLambdoidGenes <- inner_join(EZH2_MaleLambdoid, Male_Lambdoid, by=c("Gene"="hgnc_symbol")) %>%
+  select("Gene", "logFC")
+
+
+# Combine results for heatmap matrix
+
+EZH2_FinalJoin <- full_join(EZH2_LambdoidGenes, EZH2_MaleLambdoidGenes, by=c("Gene"), suffix=c("_Lambdoid", "_MaleLambdoid"))
+
+#Export and sort by logFC
+write.csv(EZH2_FinalJoin, "/active/paquette_a/slapehn/CranioRNAseq/Enrichr/EZH2_FinalJoin_020623.csv")
+
+#Import reorganized 
+EZH2_forHeatmap <-read.csv("/active/paquette_a/slapehn/CranioRNAseq/Enrichr/EZH2_forHeatmap_020623.csv")
+
+rownames(EZH2_forHeatmap) <-EZH2_forHeatmap$Gene
+EZH2_forHeatmap <-EZH2_forHeatmap[,-1]
+
+#Prepare for Heatmap
+EZH2_Matrix<- data.matrix(EZH2_forHeatmap)
+EZH2_Matrix_Final<- t(EZH2_Matrix)
+EZH2_Breaks<-seq(-2.5, 2.5, length.out=31)
+
+pheatmap(EZH2_Matrix_Final,
+         color = colorRampPalette(c("#0092B3", "White", "#F09062"))(31),
+         breaks=EZH2_Breaks,
+         scale='none',# unscaled data
+         na.color="grey",
+         cluster_rows =F,
+         cluster_cols=F,
+         na_col="grey",
+         cellwidth=10, #Change tehe for size
+         cellheight=20, #change these for size
+         treeheight_row = 0,
+         fontsize_col = 6,
+         showcolnames=T,
+         main="EZH2")
+```
+
+## AR Heatmap
+Plot downstream genes of AR Enrichr result as heatmap of LogFC
+```{r AR Heatmap, fig.width=10}
+AR_Sagittal<- read.csv("/active/paquette_a/slapehn/CranioRNAseq/Enrichr/AR_Sagittal_020623.csv")
+
+#Join with LogFC
+
+AR_SagittalGenes <- inner_join(AR_Sagittal, Full_Sagittal, by=c("Gene"="hgnc_symbol")) %>%
+  dplyr::select("Gene", "logFC")
+
+#Export and sort by logFC
+write.csv(AR_SagittalGenes, "/active/paquette_a/slapehn/CranioRNAseq/Enrichr/AR_SagittalGenes_020623.csv")
+
+#Import reorganized 
+AR_forHeatmap <-read.csv("/active/paquette_a/slapehn/CranioRNAseq/Enrichr/AR_forHeatmap_020623.csv")
+
+rownames(AR_forHeatmap) <-AR_forHeatmap$Gene
+
+
+#Prepare for Heatmap
+AR_Matrix<- data.matrix(AR_forHeatmap)
+AR_Matrix <- AR_Matrix[,-1]
+AR_Matrix_Final<- t(AR_Matrix)
+AR_Breaks<-seq(-1.5, 1.5, length.out=31)
+
+pheatmap(AR_Matrix_Final,
+         color = colorRampPalette(c("#0092B3", "White", "#F09062"))(31),
+         breaks=AR_Breaks,
+         scale='none',# unscaled data
+         na.color="grey",
+         cluster_rows =F,
+         cluster_cols=F,
+         na_col="grey",
+         cellwidth=10, #Change tehe for size
+         cellheight=20, #change these for size
+         treeheight_row = 0,
+         fontsize_col = 12,
+         showcolnames=T,
+         main="AR")
+```
+
+#Create combined dataset of all DEGs across models/phenotypes
+Save list of all DEGs and all expression data to construct supplemental Table 1
+```{r combined supp table}
+#Step 1: Import DEG list for each model
+All_Male_DEGs<- read.csv("/active/paquette_a/slapehn/CranioRNAseq/DEGs/All_Male_DEGs_020623.csv")
+All_Combined_DEGs<- read.csv("/active/paquette_a/slapehn/CranioRNAseq/DEGs/All_Combined_DEGs_020623.csv")
+All_Female_DEGs<- read.csv("/active/paquette_a/slapehn/CranioRNAseq/DEGs/All_Female_DEGs_020623.csv")
+
+#Step 2: Combine by HGNC Symbol
+Male_Female_DEGs <- full_join(All_Male_DEGs, All_Female_DEGs, by=c("hgnc_symbol"), suffix=c("_Male", "_Female"))
+All_DEGs <- full_join(All_Combined_DEGs, Male_Female_DEGs, by=c("hgnc_symbol"))
+
+#Step 3: Export to rearrange into supplementary table format
+write.csv(All_DEGs, "/active/paquette_a/slapehn/CranioRNAseq/DEGs/Full_DEGs_forSuppTable_020623.csv")
+
+#Step 4: Import lists of logcpm for all genes in primary, female, male models
+logcpm_primary <- read.csv("/active/paquette_a/slapehn/CranioRNAseq/DEGs/logcpm_primary_020623.csv")
+logcpm_female <- read.csv("/active/paquette_a/slapehn/CranioRNAseq/DEGs/logcpm_female_020623.csv")
+logcpm_male <- read.csv("/active/paquette_a/slapehn/CranioRNAseq/DEGs/logcpm_male_020623.csv")
+#Step 5: Overlap logcpm from each model with list of all DEGs from Step 2
+All_DEGs_female_logcpm <- left_join(All_DEGs, logcpm_female, by=c("hgnc_symbol")) %>%
+  dplyr::select(hgnc_symbol, mean_logcpm)
+All_DEGs_male_logcpm <- left_join(All_DEGs, logcpm_male, by=c("hgnc_symbol")) %>%
+  dplyr::select(hgnc_symbol, mean_logcpm)
+All_DEGs_primary_logcpm <- left_join(All_DEGs, logcpm_primary, by=c("hgnc_symbol")) %>%
+  dplyr::select(hgnc_symbol, mean_logcpm)
+
+#Step 6: Export lists with logcpm for All DEGs to include in Supp Table
+write.csv(All_DEGs_female_logcpm, "/active/paquette_a/slapehn/CranioRNAseq/DEGs/female_logcpm_supptable_020623.csv")
+write.csv(All_DEGs_male_logcpm, "/active/paquette_a/slapehn/CranioRNAseq/DEGs/male_logcpm_supptable_020623.csv")
+write.csv(All_DEGs_primary_logcpm, "/active/paquette_a/slapehn/CranioRNAseq/DEGs/primary_logcpm_supptable_020623.csv")
+```
+
